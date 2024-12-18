@@ -5,6 +5,19 @@ from ensembles.backend.schemas import ConvergenceHistoryResponse
 
 
 def plot_learning_curves(convergence_history: ConvergenceHistoryResponse):
+    """
+    Plots the learning curves for the training and validation datasets
+    based on the provided convergence history.
+
+    Args:
+        convergence_history (ConvergenceHistoryResponse): The convergence
+        history containing the RMSLE values for training and validation
+        datasets across iterations.
+
+    Returns:
+        plotly.graph_objects.Figure: A Plotly line plot showing the RMSLE
+        for training and validation datasets across iterations.
+    """
     df = pd.DataFrame(convergence_history.model_dump())
     df_melted = df.reset_index().melt(
         id_vars=["index"],

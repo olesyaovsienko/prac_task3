@@ -44,6 +44,7 @@ def rmsle(y: npt.NDArray[np.float64],
     res = np.sqrt(np.mean((np.log1p(y) - np.log1p(z)) ** 2))
     return float(res)
 
+
 def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     Calculate the Root Mean Squared Error (RMSE).
@@ -56,6 +57,7 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         float: RMSE value.
     """
     return np.sqrt(np.mean((y_true - y_pred) ** 2))
+
 
 def whether_to_stop(convergence_history: ConvergenceHistory,
                     patience: int) -> bool:

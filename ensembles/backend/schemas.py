@@ -58,6 +58,5 @@ class ExperimentConfig(BaseModel):
         return value
 
 
-
 class TrainModelRequest(BaseModel):
     name: str
