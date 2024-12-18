@@ -8,4 +8,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ensembles /Prac_API/ensembles
 
-CMD uvicorn ensembles.backend.app:app --host 0.0.0.0 --port 8000
+CMD ["uvicorn", "ensembles.backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+
