@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 
 from ensembles.boosting import GradientBoostingMSE
 from ensembles.random_forest import RandomForestMSE
+
 from .schemas import (ConvergenceHistoryResponse, ExistingExperimentsResponse,
                       ExperimentConfig, TrainModelRequest)
 
@@ -17,20 +18,41 @@ app = FastAPI()
 
 
 def get_runs_dir() -> Path:
+    """
+    Returns the directory path where experiment runs are stored.
+
+    Returns:
+        Path: The path to the 'runs' directory.
+    """
     return Path.cwd() / "runs"
 
 
 def convert_to_json_serializable(
-        convergence_history: ConvergenceHistoryResponse) -> Dict[
-    str, List[float]]:
+        conv_history: ConvergenceHistoryResponse) -> Dict[str, List[float]]:
+    """
+    Converts the convergence history to a JSON serializable format.
+
+    Args:
+        conv_history (ConvergenceHistoryResponse): The convergence history response object.
+
+    Returns:
+        Dict[str, List[float]]: A dictionary with 'train' and 'val' keys containing lists of floats.
+    """
     return {
-        "train": list(map(float, convergence_history["train"])),
-        "val": list(map(float, convergence_history.get("val", [])))
+        "train": list(map(float, conv_history["train"])),
+        "val": list(map(float, conv_history.get("val", [])))
     }
 
 
 @app.get("/existing_experiments/", response_model=ExistingExperimentsResponse)
 async def existing_experiments() -> ExistingExperimentsResponse:
+    """
+    Retrieves a list of existing experiment directories.
+
+    Returns:
+        ExistingExperimentsResponse: An object containing the location, absolute paths,
+                                     and experiment names of existing experiments.
+    """
     path = get_runs_dir()
     response = ExistingExperimentsResponse(location=path)
     if not path.exists():
@@ -51,6 +73,21 @@ async def register_experiment(
         target_column: Annotated[str, Form(...)],
         train_file: Annotated[UploadFile, File(...)]
 ) -> Dict[str, str]:
+    """
+    Registers a new experiment and saves the configuration and training file.
+
+    Args:
+        name (str): The name of the experiment.
+        ml_model (str): The machine learning model to use.
+        n_estimators (int): The number of estimators for the model.
+        max_depth (int): The maximum depth of the trees.
+        max_features (str): The maximum number of features to consider.
+        target_column (str): The target column in the training data.
+        train_file (UploadFile): The training data file.
+
+    Returns:
+        Dict[str, str]: A dictionary with a success message.
+    """
     experiment_dir = get_runs_dir() / name
     if not experiment_dir.exists():
         os.makedirs(experiment_dir)
@@ -77,7 +114,16 @@ async def register_experiment(
 
 @app.get("/load_experiment_config/")
 async def load_experiment_config(name: str) -> Dict[
-    str, Union[str, int, float]]:
+        str, Union[str, int, float]]:
+    """
+    Loads the configuration for a given experiment.
+
+    Args:
+        name (str): The name of the experiment.
+
+    Returns:
+        Dict[str, Union[str, int, float]]: The configuration of the experiment.
+    """
     experiment_dir = get_runs_dir() / name
     config_path = experiment_dir / "config.json"
 
@@ -90,6 +136,15 @@ async def load_experiment_config(name: str) -> Dict[
 
 @app.get("/needs_training/")
 async def needs_training(experiment_name: str) -> Dict[str, bool]:
+    """
+    Checks if an experiment needs training.
+
+    Args:
+        experiment_name (str): The name of the experiment.
+
+    Returns:
+        Dict[str, bool]: A dictionary indicating whether the experiment needs training.
+    """
     experiment_dir = get_runs_dir() / experiment_name
     model_path = experiment_dir / "trees"
     if not model_path.exists():
@@ -99,6 +154,15 @@ async def needs_training(experiment_name: str) -> Dict[str, bool]:
 
 @app.post("/train_model/", response_model=Dict[str, str])
 async def train_model(request: TrainModelRequest) -> Dict[str, str]:
+    """
+    Trains a model for a given experiment based on the configuration.
+
+    Args:
+        request (TrainModelRequest): The request object containing the experiment name.
+
+    Returns:
+        Dict[str, str]: A dictionary with a success message.
+    """
     experiment_name = request.name
     experiment_dir = get_runs_dir() / experiment_name
     config_path = experiment_dir / "config.json"
@@ -112,8 +176,6 @@ async def train_model(request: TrainModelRequest) -> Dict[str, str]:
     n_estimators = config.n_estimators
     max_depth = config.max_depth
     max_features = config.max_features
-    if max_features == "all":
-        max_features = None
     target_column = config.target_column
     tree_params = {"max_depth": max_depth, "max_features": max_features}
 
@@ -130,9 +192,9 @@ async def train_model(request: TrainModelRequest) -> Dict[str, str]:
     model = RandomForestMSE(n_estimators,
                             tree_params) if ml_model == "Random Forest" else GradientBoostingMSE(
         n_estimators, tree_params)
-    convergence_history = model.fit(X_train, y_train, X_val, y_val, trace=True)
+    conv_history = model.fit(X_train, y_train, X_val, y_val, trace=True)
 
-    history_serializable = convert_to_json_serializable(convergence_history)
+    history_serializable = convert_to_json_serializable(conv_history)
 
     history_path = experiment_dir / "convergence_history.json"
     with open(history_path, "w", encoding="utf-8") as f:
@@ -148,6 +210,16 @@ async def predict(
         name: Annotated[str, Form(...)],
         test_file: Annotated[UploadFile, File(...)]
 ) -> Dict[str, List[float]]:
+    """
+    Makes predictions using a trained model for a given experiment.
+
+    Args:
+        name (str): The name of the experiment.
+        test_file (UploadFile): The test data file.
+
+    Returns:
+        Dict[str, List[float]]: A dictionary with the list of predictions.
+    """
     experiment_dir = get_runs_dir() / name
     with open(experiment_dir / "config.json", encoding="utf-8") as f:
         config = ExperimentConfig.model_validate_json(f.read())
@@ -167,7 +239,16 @@ async def predict(
 
 @app.get("/convergence_history/", response_model=Dict[str, List[float]])
 async def convergence_history(name: str) -> Union[
-    Dict[str, List[float]], Dict[str, str]]:
+        Dict[str, List[float]], Dict[str, str]]:
+    """
+    Retrieves the convergence history for a given experiment.
+
+    Args:
+        name (str): The name of the experiment.
+
+    Returns:
+        Union[Dict[str, List[float]], Dict[str, str]]: The convergence history or an error message.
+    """
     experiment_dir = get_runs_dir() / name
     history_path = experiment_dir / "convergence_history.json"
     if not history_path.exists():

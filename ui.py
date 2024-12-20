@@ -112,7 +112,8 @@ response.raise_for_status()
 
 if response.json()["response"]:
     st.info(
-        "The model wasn't trained for the selected experiment yet. Train it to see learning curves and infer on your data."
+        "The model wasn't trained for the selected experiment yet. Train it to see learning curves and infer on your \
+        data."
     )
     if st.button("Train Model"):
         with st.spinner("Training model..."):
