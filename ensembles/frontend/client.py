@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy as np
 import numpy.typing as npt
 import requests
 
@@ -121,4 +122,4 @@ class Client:
         data = {'name': experiment_name}
         response = self.session.post(f"{self.base_url}/predict/", data=data, files=files)
         response.raise_for_status()
-        return response.json()["predictions"]
+        return np.array(response.json()["predictions"])
