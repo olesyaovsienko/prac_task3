@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    image: arseni1evdokimov/prac_api:backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ensembles:/Prac_API/ensembles
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    image: arseni1evdokimov/prac_api:frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+    environment:
+      - BASE_URL=http://backend:8000
+
+networks:
+  app-network:
+    driver: bridge
